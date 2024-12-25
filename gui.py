@@ -7,7 +7,9 @@ import os
 import signal
 import subprocess
 from datetime import datetime
-import watchdog_
+import requests
+from typing import Optional, Dict, Any, Union, BinaryIO
+import json
 
 
 
@@ -46,6 +48,9 @@ class MessageLoggerApp:
         self.clear_log_button = tk.Button(input_frame, text="Clear Log", command=self.clear_log)
         self.clear_log_button.pack(side=tk.LEFT, fill=tk.X, expand=False, padx=(0, 5))
 
+        self.restart_server_button = tk.Button(input_frame, text="Restart server", command=self.restart_server)
+        self.restart_server_button.pack(side=tk.LEFT, fill=tk.X, expand=False, padx=(0, 5))
+
         
         self.watchdog_process = None
         #Stops watchdog if somehow runs on start
@@ -67,6 +72,41 @@ class MessageLoggerApp:
         self.settings_button = None
         self.update_log()
 
+    def restart_server(self):
+        api_url = f"{self.settings['pteredoctyl_url']}api/client/servers/{self.settings['pteredoctyl_server_id']}/power"
+        token = self.settings['pteredoctyl_token']
+        try:
+            data = {
+                "signal": "restart"  # Action to send to Pteredoctyl
+            }
+
+            headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json"
+            }
+            
+            headers["Content-Type"] = "application/json"
+            
+            try:
+                request_kwargs = {
+                    "method": "POST",
+                    "url": api_url,
+                    "headers": headers,
+                    "params": data,
+                }
+                
+                
+                request_kwargs["data"] = json.dumps(data) if data else None
+                
+                response = requests.request(**request_kwargs)
+                response.raise_for_status()
+                self.log_message(f"Server has been restarted")
+            except requests.exceptions.RequestException as e:
+                self.log_message(f"Watchdog: Error making request: {str(e)}")
+                raise
+        except requests.exceptions.RequestException as e:
+            self.log_message(f"Failed to restart: {str(e)}")
+        
     def clear_log(self):
         open("log.txt", "w").close()
 
