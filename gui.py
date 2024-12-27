@@ -51,6 +51,8 @@ class MessageLoggerApp:
         self.restart_server_button = tk.Button(input_frame, text="Restart server", command=self.restart_server)
         self.restart_server_button.pack(side=tk.LEFT, fill=tk.X, expand=False, padx=(0, 5))
 
+        self.custom_command_button = tk.Button(input_frame, text="Send custom command", command=self.custom_command)
+        self.custom_command_button.pack(side=tk.LEFT, fill=tk.X, expand=False, padx=(0, 5))
         
         self.watchdog_process = None
         #Stops watchdog if somehow runs on start
@@ -71,6 +73,43 @@ class MessageLoggerApp:
         # Add a settings button to open the settings window
         self.settings_button = None
         self.update_log()
+
+    def custom_command(self):
+        api_url = f"{self.settings['pteredoctyl_url']}api/client/servers/{self.settings['pteredoctyl_server_id']}/command"
+        token = self.settings['pteredoctyl_token']
+        command = self.settings['custom_executeable']
+        try:
+            data = {
+                "command": command  # Action to send to Pteredoctyl
+            }
+
+            headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json"
+            }
+            
+            headers["Content-Type"] = "application/json"
+            
+            try:
+                request_kwargs = {
+                    "method": "POST",
+                    "url": api_url,
+                    "headers": headers,
+                    "params": data,
+                }
+                
+                
+                request_kwargs["data"] = json.dumps(data) if data else None
+                
+                response = requests.request(**request_kwargs)
+                response.raise_for_status()
+                self.log_message(f"Command '{command}' sent!")
+            except requests.exceptions.RequestException as e:
+                self.log_message(f"Watchdog: Error making request: {str(e)}")
+                raise
+        except requests.exceptions.RequestException as e:
+            self.log_message(f"Failed to restart: {str(e)}")
+
 
     def restart_server(self):
         api_url = f"{self.settings['pteredoctyl_url']}api/client/servers/{self.settings['pteredoctyl_server_id']}/power"
@@ -160,7 +199,8 @@ class MessageLoggerApp:
             "pteredoctyl_server_id": "SERVERID",
             "pteredoctyl_token": "TOKEN",
             "pteredoctyl_defult_upload_folder": "/plugins",
-            "python_executable": "python"
+            "python_executable": "python",
+            "custom_executeable": "plugman reload Link"
         }
         with open(config_path, "w") as config_file:
             json.dump(default_settings, config_file, indent=4)
@@ -195,6 +235,11 @@ class MessageLoggerApp:
         pteredoctyl_defult_upload_folder = tk.Entry(settings_window)
         pteredoctyl_defult_upload_folder.insert(0, self.settings["pteredoctyl_defult_upload_folder"])
         pteredoctyl_defult_upload_folder.pack(pady=5)
+        
+        tk.Label(settings_window, text="Custom command to send").pack(pady=5)
+        custom_executeable = tk.Entry(settings_window)
+        custom_executeable.insert(0, self.settings["custom_executeable"])
+        custom_executeable.pack(pady=5)
 
         tk.Label(settings_window, text="Directory to Watch:").pack(pady=5)
         dir_to_watch_entry = tk.Entry(settings_window)
@@ -214,6 +259,7 @@ class MessageLoggerApp:
             self.settings["pteredoctyl_token"] = pteredoctyl_token.get()
             self.settings["default_directory_to_watch"] = dir_to_watch_entry.get()
             self.settings["python_executable"] = python_executable_entry.get()
+            self.settings["custom_executeable"] = custom_executeable.get()
             self.save_settings()
             settings_window.destroy()
 
