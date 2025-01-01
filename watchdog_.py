@@ -29,7 +29,6 @@ def update_file(path_to_file, file_name):
     settings = load_settings("config.json")
     api_url = f"{settings.get('pteredoctyl_url')}api/client/servers/{settings.get('pteredoctyl_server_id')}/files/upload"
     token = settings.get("pteredoctyl_token")
-    #token = "ptlc_z95gjUeIbkdIe3HaGVPBcGmncm5b3wyEFlfdZH6trRd"
     
     try:
         # GET request example
